@@ -172,17 +172,20 @@ export const prepareWAMessageMedia = async(
 		{
 			logger,
 			saveOriginalFileIfRequired: requiresOriginalForSomeProcessing,
-			opts: options.options
+			opts: options.options,
+			newsletter: options.newsletter
 		}
 	)
 	 // url safe Base64 encode the SHA256 hash of the body
-	const fileEncSha256B64 = fileEncSha256.toString('base64')
-	const [{ mediaUrl, directPath }] = await Promise.all([
+	let fileEncSha256B64 = fileEncSha256.toString('base64')
+	if (options.newsletter) fileEncSha256B64 = fileSha256.toString('base64')
+	const [{ mediaUrl, directPath, handle }] = await Promise.all([
 		(async() => {
 			const result = await options.upload(
 				encWriteStream,
-				{ fileEncSha256B64, mediaType, timeoutMs: options.mediaUploadTimeoutMs }
+				{ fileEncSha256B64, mediaType, timeoutMs: options.mediaUploadTimeoutMs, newsletter: options.newsletter ? true : false }
 			)
+			//console.log(JSON.stringify(result, null, 2))
 			logger?.debug({ mediaType, cacheableKey }, 'uploaded media')
 			return result
 		})(),
@@ -247,6 +250,7 @@ export const prepareWAMessageMedia = async(
 				fileEncSha256,
 				fileSha256,
 				fileLength,
+				handle,
 				mediaKeyTimestamp: unixTimestampSeconds(),
 				...uploadData,
 				media: undefined
@@ -259,7 +263,7 @@ export const prepareWAMessageMedia = async(
 		options.mediaCache!.set(cacheableKey, WAProto.Message.encode(obj).finish())
 	}
 
-	return obj
+	return {...obj, handle}
 }
 
 export const prepareDisappearingMessageSettingContent = (ephemeralExpiration?: number) => {
@@ -339,12 +343,14 @@ export const generateWAMessageContent = async(
 			const img = urlInfo.highQualityThumbnail
 			if(img) {
 				extContent.thumbnailDirectPath = img.directPath
-				extContent.mediaKey = img.mediaKey
-				extContent.mediaKeyTimestamp = img.mediaKeyTimestamp
 				extContent.thumbnailWidth = img.width
 				extContent.thumbnailHeight = img.height
 				extContent.thumbnailSha256 = img.fileSha256
-				extContent.thumbnailEncSha256 = img.fileEncSha256
+				if (!options.newsletter) {
+					extContent.thumbnailEncSha256 = img.fileEncSha256
+					extContent.mediaKeyTimestamp = img.mediaKeyTimestamp
+					extContent.mediaKey = img.mediaKey
+				}
 			}
 		}
 
@@ -552,7 +558,6 @@ export const generateWAMessageContent = async(
 		m[messageType] = m[messageType] || {}
 		m[messageType].contextInfo = message.contextInfo
 	}
-
 	return WAProto.Message.fromObject(m)
 }
 
@@ -637,6 +642,7 @@ export const generateWAMessage = async(
 ) => {
 	// ensure msg ID is with every log
 	options.logger = options?.logger?.child({ msgId: options.messageId })
+	if (jid.includes('newsletter')) options.newsletter = true
 	return generateWAMessageFromContent(
 		jid,
 		await generateWAMessageContent(

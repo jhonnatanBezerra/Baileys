@@ -732,6 +732,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 									...axiosOptions || { }
 								},
 								logger,
+								newsletter: jid.includes('newsletter') ? true : options.newsletter,
 								uploadImage: generateHighQualityLinkPreview
 									? waUploadToServer
 									: undefined
