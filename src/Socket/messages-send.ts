@@ -50,7 +50,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						xmlns: 'w:m',
 						to: S_WHATSAPP_NET,
 					},
-					content: [ { tag: 'media_conn', attrs: { } } ]
+					content: [{ tag: 'media_conn', attrs: {} }]
 				})
 				const mediaConnNode = getBinaryNodeChild(result, 'media_conn')
 				const node: MediaConnInfo = {
@@ -73,9 +73,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	}
 
 	/**
-     * generic send receipt function
-     * used for receipts of phone call, read, delivery etc.
-     * */
+		 * generic send receipt function
+		 * used for receipts of phone call, read, delivery etc.
+		 * */
 	const sendReceipt = async(jid: string, participant: string | undefined, messageIds: string[], type: MessageReceiptType) => {
 		const node: BinaryNode = {
 			tag: 'receipt',
@@ -107,7 +107,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			node.content = [
 				{
 					tag: 'list',
-					attrs: { },
+					attrs: {},
 					content: remainingMessageIds.map(id => ({
 						tag: 'item',
 						attrs: { id }
@@ -134,7 +134,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		// based on privacy settings, we have to change the read type
 		const readType = privacySettings.readreceipts === 'all' ? 'read' : 'read-self'
 		await sendReceipts(keys, readType)
- 	}
+	}
 
 	/** Fetch all the devices we've to send a message to */
 	const getUSyncDevices = async(jids: string[], useCache: boolean, ignoreZeroDevices: boolean) => {
@@ -180,7 +180,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					content: [
 						{
 							tag: 'query',
-							attrs: { },
+							attrs: {},
 							content: [
 								{
 									tag: 'devices',
@@ -188,7 +188,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								}
 							]
 						},
-						{ tag: 'list', attrs: { }, content: users }
+						{ tag: 'list', attrs: {}, content: users }
 					]
 				},
 			],
@@ -243,7 +243,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				content: [
 					{
 						tag: 'key',
-						attrs: { },
+						attrs: {},
 						content: jidsRequiringFetch.map(
 							jid => ({
 								tag: 'user',
@@ -361,10 +361,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						(async() => {
 							if(!participant && !isStatus) {
 								const result = await authState.keys.get('sender-key-memory', [jid])
-								return result[jid] || { }
+								return result[jid] || {}
 							}
 
-							return { }
+							return {}
 						})()
 					])
 
@@ -437,7 +437,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							devices.push({ user: meUser })
 						}
 
-						const additionalDevices = await getUSyncDevices([ meId, jid ], !!useUserDevicesCache, true)
+						const additionalDevices = await getUSyncDevices([meId, jid], !!useUserDevicesCache, true)
 						devices.push(...additionalDevices)
 					}
 
@@ -474,7 +474,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				if(participants.length) {
 					binaryNodeContent.push({
 						tag: 'participants',
-						attrs: { },
+						attrs: {},
 						content: participants
 					})
 				}
@@ -508,7 +508,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				if(shouldIncludeDeviceIdentity) {
 					(stanza.content as BinaryNode[]).push({
 						tag: 'device-identity',
-						attrs: { },
+						attrs: {},
 						content: encodeSignedDeviceIdentity(authState.creds.account!, true)
 					})
 
@@ -519,7 +519,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				if(buttonType) {
 					(stanza.content as BinaryNode[]).push({
 						tag: 'biz',
-						attrs: { },
+						attrs: {},
 						content: [
 							{
 								tag: buttonType,
@@ -614,7 +614,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			content: [
 				{
 					tag: 'tokens',
-					attrs: { },
+					attrs: {},
 					content: jids.map(
 						jid => ({
 							tag: 'token',
@@ -646,8 +646,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		getButtonArgs,
 		readMessages,
 		refreshMediaConn,
-	    	waUploadToServer,
+		waUploadToServer,
 		fetchPrivacySettings,
+		createParticipantNodes,
+		getUSyncDevices,
 		updateMediaMessage: async(message: proto.IWebMessageInfo) => {
 			const content = assertMediaContent(message.message)
 			const mediaKey = content.mediaKey!
@@ -675,7 +677,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 									}
 
 									content.directPath = media.directPath
-									content.url = getUrlFromDirectPath(content.directPath!)
+									content.url = getUrlFromDirectPath(content.directPath)
 
 									logger.debug({ directPath: media.directPath, key: result.key }, 'media update successful')
 								} catch(err) {
@@ -702,7 +704,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		sendMessage: async(
 			jid: string,
 			content: AnyMessageContent,
-			options: MiscMessageGenerationOptions = { }
+			options: MiscMessageGenerationOptions = {}
 		) => {
 			const userJid = authState.creds.me!.id
 			if(
@@ -729,7 +731,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								thumbnailWidth: linkPreviewImageThumbnailWidth,
 								fetchOpts: {
 									timeout: 3_000,
-									...axiosOptions || { }
+									...axiosOptions || {}
 								},
 								logger,
 								newsletter: jid.includes('newsletter') ? true : options.newsletter,
@@ -746,7 +748,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				)
 				const isDeleteMsg = 'delete' in content && !!content.delete
 				const isEditMsg = 'edit' in content && !!content.edit
-				const additionalAttributes: BinaryNodeAttributes = { }
+				const additionalAttributes: BinaryNodeAttributes = {}
 				// required for delete
 				if(isDeleteMsg) {
 					// if the chat is a group, and I am not the author, then delete the message as an admin
