@@ -91,6 +91,22 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		await privacyQuery('online', value)
 	}
 
+	const fetchDisappearingDuration = async(...jids: string[]) => {
+		const list = jids.map((jid) => ({ tag: 'user', attrs: { jid } }))
+		const results = await interactiveQuery(
+			list,
+			{ tag: 'disappearing_mode', attrs: {} }
+		)
+		return results.map(item => {
+			const result = getBinaryNodeChild(item, 'disappearing_mode')
+			return {
+				user: item.attrs.jid,
+				duration: parseInt((result as any)?.attrs.duration),
+				setAt: new Date(+(result?.attrs.t || 0) * 1000)
+			}
+		})
+	}
+
 	const updateProfilePicturePrivacy = async(value: WAPrivacyValue) => {
 		await privacyQuery('profile', value)
 	}
@@ -994,6 +1010,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		fetchBlocklist,
 		fetchStatus,
 		updateProfilePicture,
+		fetchDisappearingDuration,
 		removeProfilePicture,
 		updateProfileStatus,
 		updateProfileName,
