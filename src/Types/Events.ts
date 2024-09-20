@@ -60,6 +60,13 @@ export type BaileysEventMap = {
     'call': WACallEvent[]
     'labels.edit': Label
     'labels.association': { association: LabelAssociation, type: 'add' | 'remove' }
+    'offline.preview': {
+        total: number
+        appDataChanges: number
+        messages: number
+        notifications: number
+        receipts: number
+    }
 }
 
 export type BufferedEventData = {

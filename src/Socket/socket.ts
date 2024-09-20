@@ -665,6 +665,25 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	})
 
+	ws.on('CB:ib,,offline_preview', (node: BinaryNode) => {
+		const offlinePreviewNode = getBinaryNodeChild(node, 'offline_preview')
+		const previewCount = +(offlinePreviewNode?.attrs.count || 0)
+		const appDataChanges = +(offlinePreviewNode?.attrs.appdata || 0)
+		const messageCount = +(offlinePreviewNode?.attrs.message || 0)
+		const notificationCount = +(offlinePreviewNode?.attrs.notification || 0)
+		const receiptCount = +(offlinePreviewNode?.attrs.receipt || 0)
+
+		logger.info(`appdata changes: ${appDataChanges}, messages: ${messageCount}, notifications: ${notificationCount}, receipts: ${receiptCount}`)
+
+		ev.emit('offline.preview', {
+			total: previewCount,
+			appDataChanges,
+			messages: messageCount,
+			notifications: notificationCount,
+			receipts: receiptCount
+		})
+	})
+
 	let didStartBuffer = false
 	process.nextTick(() => {
 		if(creds.me?.id) {
