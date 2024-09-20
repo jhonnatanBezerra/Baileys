@@ -1,5 +1,5 @@
 import { Boom } from '@hapi/boom'
-import { AxiosRequestConfig } from 'axios'
+import axios, { AxiosRequestConfig } from 'axios'
 import { exec } from 'child_process'
 import * as Crypto from 'crypto'
 import { once } from 'events'
@@ -605,44 +605,30 @@ export const getWAUploadToServer = (
 	{ customUploadHosts, fetchAgent, logger, options }: SocketConfig,
 	refreshMediaConn: (force: boolean) => Promise<MediaConnInfo>,
 ): WAMediaUploadFunction => {
-	return async (stream, { mediaType, fileEncSha256B64, timeoutMs, newsletter }) => {
-		const { default: axios } = await import('axios')
+	return async(stream, { mediaType, fileEncSha256B64, timeoutMs }) => {
 		// send a query JSON to obtain the url & auth token to upload our media
 		let uploadInfo = await refreshMediaConn(false)
 
-		let urls: { mediaUrl: string, directPath: string, handle?: string } | undefined
-		const hosts = [...customUploadHosts, ...uploadInfo.hosts]
+		let urls: { mediaUrl: string, directPath: string } | undefined
+		const hosts = [ ...customUploadHosts, ...uploadInfo.hosts ]
 
-		const chunks: Buffer[] = []
-		for await (const chunk of stream) {
-			chunks.push(chunk)
-		}
-		let pathmap: any
-		pathmap = MEDIA_PATH_MAP[mediaType]
-		if (newsletter) {
-			pathmap = pathmap.replace("/mms/", "/newsletter/newsletter-")
-		}
-		const reqBody = Buffer.concat(chunks)
 		fileEncSha256B64 = encodeBase64EncodedStringForUpload(fileEncSha256B64)
 
-		for (const { hostname, maxContentLengthBytes } of hosts) {
+		for(const { hostname } of hosts) {
 			logger.debug(`uploading to "${hostname}"`)
 
 			const auth = encodeURIComponent(uploadInfo.auth) // the auth token
-			const url = `https://${hostname}${pathmap}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
+			const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
 			let result: any
 			try {
-				if (maxContentLengthBytes && reqBody.length > maxContentLengthBytes) {
-					throw new Boom(`Body too large for "${hostname}"`, { statusCode: 413 })
-				}
 
 				const body = await axios.post(
 					url,
-					reqBody,
+					stream,
 					{
 						...options,
 						headers: {
-							...options.headers || {},
+							...options.headers || { },
 							'Content-Type': 'application/octet-stream',
 							'Origin': DEFAULT_ORIGIN
 						},
@@ -654,26 +640,19 @@ export const getWAUploadToServer = (
 					}
 				)
 				result = body.data
-				if (result?.url || result?.directPath) {
-					if (newsletter) {
-						urls = {
-							mediaUrl: result.url,
-							directPath: result.direct_path,
-							handle: result.handle
-						}
-					} else {
-						urls = {
-							mediaUrl: result.url,
-							directPath: result.direct_path,
-						}
+
+				if(result?.url || result?.directPath) {
+					urls = {
+						mediaUrl: result.url,
+						directPath: result.direct_path
 					}
 					break
 				} else {
 					uploadInfo = await refreshMediaConn(true)
 					throw new Error(`upload failed, reason: ${JSON.stringify(result)}`)
 				}
-			} catch (error) {
-				if (axios.isAxiosError(error)) {
+			} catch(error) {
+				if(axios.isAxiosError(error)) {
 					result = error.response?.data
 				}
 
@@ -682,7 +661,7 @@ export const getWAUploadToServer = (
 			}
 		}
 
-		if (!urls) {
+		if(!urls) {
 			throw new Boom(
 				'Media upload failed on all hosts',
 				{ statusCode: 500 }
